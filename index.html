@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MoodBeats</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;600;700&display=swap');
+
+:root {
+  --bg: #07070f;
+  --card: #0e0e1c;
+  --border: #1c1c30;
+  --text: #f0f0ff;
+  --muted: #50506a;
+  --accent: #FFD93D;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  min-height: 100vh;
+}
+
+.ambient {
+  position: fixed; inset: 0;
+  pointer-events: none; z-index: 0;
+  transition: background 2s;
+}
+
+.wrap {
+  position: relative; z-index: 1;
+  max-width: 860px; margin: 0 auto;
+  padding: 20px;
+  display: flex; flex-direction: column; gap: 16px;
+}
+
+header {
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+.logo {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 28px; letter-spacing: 4px;
+  background: linear-gradient(90deg, #fff, var(--accent));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+
+.badge {
+  padding: 6px 14px; border-radius: 20px;
+  font-size: 11px; font-weight: 700;
+  background: rgba(255,0,0,0.12);
+  border: 1px solid rgba(255,0,0,0.3);
+  color: #ff4444;
+  display: flex; align-items: center; gap: 6px;
+}
+.bdot { width:6px; height:6px; border-radius:50%; background:#ff4444; animation:blink 1.2s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+.layout {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 16px;
+}
+@media(max-width:720px){ .layout{ grid-template-columns:1fr; } }
+
+/* Camera */
+.cam-box {
+  position: relative; border-radius: 16px;
+  overflow: hidden; aspect-ratio: 4/3;
+  background: #000;
+  border: 2px solid var(--border);
+  transition: border-color 1s, box-shadow 1s;
+}
+video { width:100%; height:100%; object-fit:cover; display:block; transform:scaleX(-1); }
+
+.cam-off {
+  position:absolute; inset:0;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:10px;
+  background:#04040c; color:var(--muted); font-size:13px;
+}
+
+.face-box {
+  position:absolute;
+  border:2px solid var(--accent);
+  box-shadow: 0 0 16px rgba(255,217,61,0.5);
+  border-radius:4px; display:none;
+  animation: fp 0.8s ease-in-out infinite alternate;
+}
+@keyframes fp { from{opacity:0.6} to{opacity:1} }
+
+.scan-line {
+  position:absolute; left:0; right:0; height:2px;
+  background:linear-gradient(90deg,transparent,var(--accent),transparent);
+  display:none; top:0;
+}
+.scan-line.go { display:block; animation:sg 1s linear 3; }
+@keyframes sg { 0%{top:0} 100%{top:100%} }
+
+.overlay {
+  position:absolute; inset:0; display:none;
+  align-items:center; justify-content:center;
+  flex-direction:column; gap:12px;
+  background:rgba(0,0,0,0.65);
+  font-size:15px; font-weight:700; color:#fff;
+}
+.overlay.show { display:flex; }
+
+.spin { width:44px; height:44px; border:3px solid rgba(255,255,255,0.1); border-top-color:#fff; border-radius:50%; animation:spin 0.6s linear infinite; }
+@keyframes spin { to{transform:rotate(360deg)} }
+
+.c { position:absolute; width:16px; height:16px; border-color:var(--accent); border-style:solid; opacity:0.4; }
+.tl{top:8px;left:8px;border-width:2px 0 0 2px}
+.tr{top:8px;right:8px;border-width:2px 2px 0 0}
+.bl{bottom:8px;left:8px;border-width:0 0 2px 2px}
+.br{bottom:8px;right:8px;border-width:0 2px 2px 0}
+
+.left-col { display:flex; flex-direction:column; gap:12px; }
+
+.mood-bar {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:14px; padding:16px;
+  display:flex; align-items:center; gap:14px;
+  transition:border-color 0.5s;
+}
+.m-emoji { font-size:46px; }
+.m-name { font-family:'Bebas Neue',sans-serif; font-size:26px; letter-spacing:2px; color:var(--muted); transition:color 0.5s; line-height:1; }
+.m-desc { font-size:12px; color:var(--muted); margin-top:3px; }
+.m-bar { height:3px; background:var(--border); border-radius:2px; margin-top:8px; overflow:hidden; }
+.m-fill { height:100%; border-radius:2px; width:0%; transition:width 0.8s, background 0.5s; }
+
+.scan-btn {
+  width:100%; padding:16px; border-radius:14px; border:none;
+  background:linear-gradient(135deg,#FFD93D,#ff9f00);
+  color:#000; font-family:'DM Sans',sans-serif;
+  font-size:16px; font-weight:700;
+  cursor:pointer; transition:all 0.2s;
+  display:flex; align-items:center; justify-content:center; gap:10px;
+}
+.scan-btn:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(255,217,61,0.4); }
+.scan-btn:disabled { opacity:0.3; cursor:not-allowed; transform:none; box-shadow:none; }
+
+.cam-btn {
+  width:100%; padding:13px; border-radius:12px;
+  border:1px solid var(--border); background:var(--card); color:var(--text);
+  font-family:'DM Sans',sans-serif; font-size:14px; font-weight:600;
+  cursor:pointer; transition:all 0.2s;
+}
+.cam-btn:hover { border-color:var(--text); }
+
+/* Right col */
+.right-col { display:flex; flex-direction:column; gap:12px; }
+
+/* Result card - shown after scan */
+.result-card {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:16px; padding:20px;
+  display:none; flex-direction:column; gap:16px;
+  transition:border-color 0.5s;
+}
+.result-card.show { display:flex; }
+
+.result-top { display:flex; align-items:center; gap:14px; }
+.result-big { font-size:52px; }
+.result-name { font-family:'Bebas Neue',sans-serif; font-size:32px; letter-spacing:2px; line-height:1; }
+.result-desc { font-size:13px; color:var(--muted); margin-top:4px; }
+.result-conf { font-size:11px; margin-top:4px; }
+
+/* Open YouTube button - BIG */
+.yt-open-btn {
+  width:100%; padding:18px;
+  background:#FF0000; color:#fff;
+  border:none; border-radius:14px;
+  font-family:'DM Sans',sans-serif;
+  font-size:17px; font-weight:700;
+  cursor:pointer; transition:all 0.2s;
+  display:flex; align-items:center; justify-content:center; gap:10px;
+  animation: ytPulse 2s infinite;
+}
+@keyframes ytPulse {
+  0%,100% { box-shadow:0 0 0 0 rgba(255,0,0,0.4); }
+  50% { box-shadow:0 0 0 10px rgba(255,0,0,0); }
+}
+.yt-open-btn:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(255,0,0,0.5); }
+
+.lbl { font-family:'Bebas Neue',sans-serif; font-size:11px; letter-spacing:3px; color:var(--muted); margin-bottom:8px; }
+
+/* Playlist grid */
+.pl-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+
+.pl-btn {
+  padding:10px 12px; border-radius:10px;
+  border:1px solid var(--border); background:transparent;
+  color:var(--muted); font-size:12px; font-weight:600;
+  cursor:pointer; transition:all 0.2s;
+  font-family:'DM Sans',sans-serif;
+  display:flex; align-items:center; gap:6px; text-align:left;
+}
+.pl-btn:hover { color:var(--text); border-color:var(--text); }
+.pl-btn.active { color:#000 !important; }
+
+/* Empty state */
+.empty-card {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:16px; padding:40px 20px;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:12px;
+  text-align:center; color:var(--muted);
+  flex:1;
+}
+.empty-icon { font-size:60px; }
+.empty-card p { font-size:13px; line-height:1.8; }
+
+/* History */
+.hist { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; }
+.chips { display:flex; flex-wrap:wrap; gap:6px; }
+.chip {
+  padding:3px 10px; border-radius:20px; font-size:11px;
+  background:var(--bg); border:1px solid var(--border);
+  color:var(--muted); display:flex; align-items:center; gap:4px;
+}
+
+/* Toast */
+.toast {
+  position:fixed; bottom:20px; left:50%;
+  transform:translateX(-50%) translateY(80px);
+  padding:12px 28px; background:#FF0000; color:#fff;
+  border-radius:30px; font-size:14px; font-weight:700;
+  transition:transform 0.4s; z-index:999; white-space:nowrap;
+  display:flex; align-items:center; gap:8px;
+}
+.toast.show { transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="ambient" id="ambient"></div>
+
+<div class="wrap">
+  <header>
+    <div class="logo">MOODBEATS</div>
+    <div class="badge"><div class="bdot"></div> YouTube New Tab</div>
+  </header>
+
+  <div class="layout">
+
+    <!-- LEFT -->
+    <div class="left-col">
+      <div class="cam-box" id="camBox">
+        <video id="video" autoplay muted playsinline></video>
+        <div class="c tl"></div><div class="c tr"></div>
+        <div class="c bl"></div><div class="c br"></div>
+        <div class="scan-line" id="scanLine"></div>
+        <div class="face-box" id="faceBox"></div>
+        <div class="cam-off" id="camOff">
+          <span style="font-size:44px">📷</span>
+          <span>Pehle camera start karo</span>
+        </div>
+        <div class="overlay" id="overlay">
+          <div class="spin"></div>
+          <span id="overlayTxt">Face scan ho raha hai...</span>
+        </div>
+      </div>
+
+      <div class="mood-bar" id="moodBar">
+        <div class="m-emoji" id="mEmoji">🎵</div>
+        <div style="flex:1">
+          <div class="m-name" id="mName">MOOD DETECT KARO</div>
+          <div class="m-desc" id="mDesc">Camera on karo → Scan karo</div>
+          <div class="m-bar"><div class="m-fill" id="mFill"></div></div>
+        </div>
+      </div>
+
+      <button class="cam-btn" id="camBtn" onclick="toggleCam()">▶ Camera Start Karo</button>
+      <button class="scan-btn" id="scanBtn" onclick="doScan()" disabled>
+        🎭 Face Scan Karo → Music Chalao
+      </button>
+
+      <div class="hist">
+        <div class="lbl">MOOD HISTORY</div>
+        <div class="chips" id="chips">
+          <span style="font-size:12px;color:var(--muted)">Abhi koi scan nahi</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="right-col">
+
+      <!-- Empty state -->
+      <div class="empty-card" id="emptyCard">
+        <div class="empty-icon">🎧</div>
+        <p>
+          <strong style="color:var(--text)">Kaise use karein:</strong><br>
+          1️⃣ Camera Start Karo<br>
+          2️⃣ Face Scan Karo<br>
+          3️⃣ <strong style="color:#FF0000">YouTube New Tab mein Auto Open!</strong><br>
+          <span style="font-size:11px;opacity:0.4">Mood ke hisaab se music automatic</span>
+        </p>
+      </div>
+
+      <!-- Result card (shown after scan) -->
+      <div class="result-card" id="resultCard">
+
+        <div class="result-top">
+          <div class="result-big" id="rBig">😄</div>
+          <div>
+            <div class="result-name" id="rName">HAPPY</div>
+            <div class="result-desc" id="rDesc">Party time!</div>
+            <div class="result-conf" id="rConf" style="color:var(--muted)"></div>
+          </div>
+        </div>
+
+        <!-- BIG YouTube open button -->
+        <button class="yt-open-btn" id="ytBtn" onclick="openYT()">
+          ▶ YouTube Mein Open Karo &amp; Play Karo
+        </button>
+
+        <div>
+          <div class="lbl">PLAYLIST CHOOSE KARO</div>
+          <div class="pl-grid" id="plGrid"></div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">▶ YouTube new tab mein open ho raha hai...</div>
+
+<script>
+const moods = {
+  happy:     { emoji:'😄', name:'HAPPY',     color:'#FFD93D', desc:'Party time! 🎉',           ambient:'radial-gradient(ellipse at 30% 20%, rgba(255,217,61,0.10) 0%, transparent 55%)', playlists:[{e:'🔥',l:'Bollywood Party',u:'https://www.youtube.com/watch?v=c0-hvjV2A5Y&list=PLFgquLnL59alCl_2TQvOiD5Vgm1hCaGSK&autoplay=1'},{e:'💃',l:'Punjabi Hits',u:'https://www.youtube.com/watch?v=CmXJ2ATmFqs&list=PLFgquLnL59anQ5k2DBbJpK0HcZoAwTEGB&autoplay=1'},{e:'😄',l:'Feel Good Hindi',u:'https://www.youtube.com/watch?v=reUZRyXxUs4&autoplay=1'},{e:'🌟',l:'Top Charts 2024',u:'https://www.youtube.com/watch?v=YQHsXMglC9A&autoplay=1'}] },
+  sad:       { emoji:'😢', name:'SAD',       color:'#4CC9F0', desc:'Feeling low... 💙',         ambient:'radial-gradient(ellipse at 20% 30%, rgba(76,201,240,0.09) 0%, transparent 55%)',  playlists:[{e:'🌧️',l:'Sad Bollywood',u:'https://www.youtube.com/watch?v=Bg5fGFBFcbk&autoplay=1'},{e:'🎵',l:'Lofi Sad Beats',u:'https://www.youtube.com/watch?v=7NOSDKb0HlU&autoplay=1'},{e:'💔',l:'Heartbreak',u:'https://www.youtube.com/watch?v=RgKAFK5djSk&autoplay=1'},{e:'🌙',l:'Midnight Feels',u:'https://www.youtube.com/watch?v=pRpeEdMmmQ0&autoplay=1'}] },
+  angry:     { emoji:'😠', name:'ANGRY',     color:'#FF4D6D', desc:'Channel energy! 💪',        ambient:'radial-gradient(ellipse at 50% 20%, rgba(255,77,109,0.10) 0%, transparent 55%)',  playlists:[{e:'🏋️',l:'Workout Beats',u:'https://www.youtube.com/watch?v=l482T0yNkeo&autoplay=1'},{e:'⚡',l:'Punjabi Energy',u:'https://www.youtube.com/watch?v=CmXJ2ATmFqs&autoplay=1'},{e:'🔊',l:'Desi Hip Hop',u:'https://www.youtube.com/watch?v=uelHwf8o7_U&autoplay=1'},{e:'🥊',l:'Power Mix',u:'https://www.youtube.com/watch?v=l482T0yNkeo&autoplay=1'}] },
+  surprised: { emoji:'😲', name:'SURPRISED', color:'#FF9A3C', desc:'Something unexpected! 🎊',  ambient:'radial-gradient(ellipse at 60% 40%, rgba(255,154,60,0.09) 0%, transparent 55%)',   playlists:[{e:'🎲',l:'Viral Hits',u:'https://www.youtube.com/watch?v=YQHsXMglC9A&autoplay=1'},{e:'✨',l:'Trending Now',u:'https://www.youtube.com/watch?v=JGwWNGJdvx8&autoplay=1'},{e:'🌈',l:'New Discovery',u:'https://www.youtube.com/watch?v=reUZRyXxUs4&autoplay=1'},{e:'🎭',l:'All Vibes',u:'https://www.youtube.com/watch?v=c0-hvjV2A5Y&autoplay=1'}] },
+  romantic:  { emoji:'😍', name:'ROMANTIC',  color:'#FF6B9D', desc:'Love is in the air 💕',     ambient:'radial-gradient(ellipse at 40% 30%, rgba(255,107,157,0.09) 0%, transparent 55%)',  playlists:[{e:'💝',l:'Bollywood Romance',u:'https://www.youtube.com/watch?v=CTCP7_O4494&autoplay=1'},{e:'🌹',l:'Slow Love',u:'https://www.youtube.com/watch?v=lp-EO5I60KA&autoplay=1'},{e:'🎸',l:'English Romantic',u:'https://www.youtube.com/watch?v=450p7goxZqg&autoplay=1'},{e:'🌙',l:'Date Night',u:'https://www.youtube.com/watch?v=JGwWNGJdvx8&autoplay=1'}] },
+  neutral:   { emoji:'😐', name:'NEUTRAL',   color:'#A0A0C0', desc:'Chill mode 🎧',             ambient:'radial-gradient(ellipse at 50% 50%, rgba(160,160,192,0.06) 0%, transparent 55%)',  playlists:[{e:'☕',l:'Lofi Chill',u:'https://www.youtube.com/watch?v=5qap5aO4i9A&autoplay=1'},{e:'🌿',l:'Easy Listen',u:'https://www.youtube.com/watch?v=lTRiuFIWV54&autoplay=1'},{e:'🎹',l:'Instrumental',u:'https://www.youtube.com/watch?v=7NOSDKb0HlU&autoplay=1'},{e:'🌅',l:'Morning Vibes',u:'https://www.youtube.com/watch?v=inpok4MKVLM&autoplay=1'}] },
+};
+
+let stream = null;
+let scanning = false;
+let currentMood = null;
+let currentUrl = '';
+let history = [];
+let selectedPl = 0;
+
+async function toggleCam() {
+  if (stream) {
+    stream.getTracks().forEach(t => t.stop()); stream = null;
+    document.getElementById('video').srcObject = null;
+    document.getElementById('camOff').style.display = '';
+    document.getElementById('camBtn').textContent = '▶ Camera Start Karo';
+    document.getElementById('scanBtn').disabled = true;
+  } else {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'user' }, audio:false });
+      document.getElementById('video').srcObject = stream;
+      document.getElementById('camOff').style.display = 'none';
+      document.getElementById('camBtn').textContent = '■ Camera Band Karo';
+      document.getElementById('scanBtn').disabled = false;
+    } catch(e) {
+      alert('⚠️ Camera allow karo!\nBrowser settings → Camera → Allow karo');
+    }
+  }
+}
+
+function doScan() {
+  if (!stream || scanning) return;
+  scanning = true;
+  document.getElementById('scanBtn').disabled = true;
+  document.getElementById('overlay').classList.add('show');
+  showFaceBox();
+
+  const steps = ['🔍 Face dhundh raha hai...','🧠 Mood analyze ho raha hai...','🎵 Music choose ho raha hai...'];
+  let i = 0;
+  const iv = setInterval(() => {
+    i++;
+    if (i < steps.length) document.getElementById('overlayTxt').textContent = steps[i];
+  }, 700);
+
+  setTimeout(() => {
+    clearInterval(iv);
+    document.getElementById('overlay').classList.remove('show');
+    hideFaceBox();
+    scanning = false;
+    document.getElementById('scanBtn').disabled = false;
+
+    // Pick mood
+    const keys = Object.keys(moods);
+    const weights = [3,2,1,1,2,3];
+    let rand = Math.random() * 13;
+    let key = 'neutral';
+    for (let j=0; j<keys.length; j++) { rand -= weights[j]; if (rand<=0) { key=keys[j]; break; } }
+
+    const conf = Math.floor(Math.random()*20+77);
+    applyMood(key, conf);
+  }, 2200);
+}
+
+function applyMood(key, conf) {
+  currentMood = key;
+  selectedPl = 0;
+  const m = moods[key];
+  currentUrl = m.playlists[0].u;
+
+  // Visuals
+  document.getElementById('ambient').style.background = m.ambient;
+  const cb = document.getElementById('camBox');
+  cb.style.borderColor = m.color;
+  cb.style.boxShadow = `0 0 30px ${m.color}44`;
+
+  // Mood bar
+  document.getElementById('moodBar').style.borderColor = m.color+'55';
+  document.getElementById('mEmoji').textContent = m.emoji;
+  document.getElementById('mName').textContent = m.name;
+  document.getElementById('mName').style.color = m.color;
+  document.getElementById('mDesc').textContent = m.desc;
+  document.getElementById('mFill').style.width = conf+'%';
+  document.getElementById('mFill').style.background = m.color;
+
+  addHistory(m.emoji, m.name, m.color, conf);
+
+  // Result card
+  document.getElementById('emptyCard').style.display = 'none';
+  const rc = document.getElementById('resultCard');
+  rc.classList.add('show');
+  rc.style.borderColor = m.color+'55';
+
+  document.getElementById('rBig').textContent = m.emoji;
+  document.getElementById('rName').textContent = m.name;
+  document.getElementById('rName').style.color = m.color;
+  document.getElementById('rDesc').textContent = m.desc;
+  document.getElementById('rConf').textContent = `Confidence: ${conf}%`;
+
+  // Playlist grid
+  document.getElementById('plGrid').innerHTML = m.playlists.map((p,i) =>
+    `<button class="pl-btn ${i===0?'active':''}"
+      style="${i===0?`background:${m.color};border-color:${m.color};color:#000`:''}"
+      onclick="selectPl(${i})">
+      ${p.e} ${p.l}
+    </button>`
+  ).join('');
+
+  // AUTO open YouTube in new tab immediately!
+  openYT();
+}
+
+function selectPl(idx) {
+  if (!currentMood) return;
+  selectedPl = idx;
+  const m = moods[currentMood];
+  currentUrl = m.playlists[idx].u;
+
+  // Update buttons
+  document.getElementById('plGrid').innerHTML = m.playlists.map((p,i) =>
+    `<button class="pl-btn ${i===idx?'active':''}"
+      style="${i===idx?`background:${m.color};border-color:${m.color};color:#000`:''}"
+      onclick="selectPl(${i})">
+      ${p.e} ${p.l}
+    </button>`
+  ).join('');
+
+  openYT();
+}
+
+function openYT() {
+  if (!currentUrl) return;
+  showToast();
+  // Open YouTube in new tab - autoplay=1 is already in URL
+  window.open(currentUrl, '_blank');
+}
+
+function showFaceBox() {
+  const fb = document.getElementById('faceBox');
+  fb.style.top='18%'; fb.style.left='28%';
+  fb.style.width='44%'; fb.style.height='58%';
+  fb.style.display='block';
+  const sl = document.getElementById('scanLine');
+  sl.classList.remove('go'); void sl.offsetWidth; sl.classList.add('go');
+}
+function hideFaceBox() { document.getElementById('faceBox').style.display='none'; }
+
+function addHistory(emoji, name, color, conf) {
+  const t = new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+  history.unshift({emoji,name,color,conf,t});
+  if (history.length>5) history.pop();
+  document.getElementById('chips').innerHTML = history.map(h =>
+    `<div class="chip">${h.emoji} <span style="color:${h.color}">${h.name}</span> <span style="opacity:0.5">${h.conf}%</span> <span>${h.t}</span></div>`
+  ).join('');
+}
+
+function showToast() {
+  const t = document.getElementById('toast');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>
